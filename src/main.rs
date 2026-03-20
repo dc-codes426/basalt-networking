@@ -13,7 +13,8 @@ use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 use std::net::SocketAddr;
 
 use basalt_networking::apis;
-use basalt_networking::apis::default::PingResponse;
+use basalt_networking::apis::health::PingResponse;
+use basalt_networking::models;
 
 #[derive(Clone)]
 struct ApiImpl {
@@ -30,8 +31,12 @@ impl AsRef<ApiImpl> for ApiImpl {
 #[async_trait::async_trait]
 impl apis::ErrorHandler<()> for ApiImpl {}
 
+// ---------------------------------------------------------------------------
+// Health
+// ---------------------------------------------------------------------------
+
 #[async_trait::async_trait]
-impl apis::default::Default for ApiImpl {
+impl apis::health::Health for ApiImpl {
     async fn ping(
         &self,
         _method: &Method,
@@ -68,6 +73,159 @@ impl apis::default::Default for ApiImpl {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Utility
+// ---------------------------------------------------------------------------
+
+#[async_trait::async_trait]
+impl apis::utility::Utility for ApiImpl {
+    async fn get_derived_public_key(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _query_params: &models::GetDerivedPublicKeyQueryParams,
+    ) -> Result<apis::utility::GetDerivedPublicKeyResponse, ()> {
+        todo!("get_derived_public_key not yet implemented")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Vault
+// ---------------------------------------------------------------------------
+
+#[async_trait::async_trait]
+impl apis::vault::Vault for ApiImpl {
+    async fn create_mldsa_vault(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _body: &models::CreateMldsaRequest,
+    ) -> Result<apis::vault::CreateMldsaVaultResponse, ()> {
+        todo!("create_mldsa_vault not yet implemented")
+    }
+
+    async fn create_vault(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _body: &models::VaultCreateRequest,
+    ) -> Result<apis::vault::CreateVaultResponse, ()> {
+        todo!("create_vault not yet implemented")
+    }
+
+    async fn exist_vault(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _path_params: &models::ExistVaultPathParams,
+    ) -> Result<apis::vault::ExistVaultResponse, ()> {
+        todo!("exist_vault not yet implemented")
+    }
+
+    async fn get_vault(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _header_params: &models::GetVaultHeaderParams,
+        _path_params: &models::GetVaultPathParams,
+    ) -> Result<apis::vault::GetVaultResponse, ()> {
+        todo!("get_vault not yet implemented")
+    }
+
+    async fn import_vault(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _body: &models::KeyImportRequest,
+    ) -> Result<apis::vault::ImportVaultResponse, ()> {
+        todo!("import_vault not yet implemented")
+    }
+
+    async fn migrate_vault(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _body: &models::MigrationRequest,
+    ) -> Result<apis::vault::MigrateVaultResponse, ()> {
+        todo!("migrate_vault not yet implemented")
+    }
+
+    async fn reshare_vault(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _body: &models::ReshareRequest,
+    ) -> Result<apis::vault::ReshareVaultResponse, ()> {
+        todo!("reshare_vault not yet implemented")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Signing
+// ---------------------------------------------------------------------------
+
+#[async_trait::async_trait]
+impl apis::signing::Signing for ApiImpl {
+    async fn sign_messages(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _body: &models::KeysignRequest,
+    ) -> Result<apis::signing::SignMessagesResponse, ()> {
+        todo!("sign_messages not yet implemented")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Batch
+// ---------------------------------------------------------------------------
+
+#[async_trait::async_trait]
+impl apis::batch::Batch for ApiImpl {
+    async fn create_vault_batch(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _body: &models::BatchVaultRequest,
+    ) -> Result<apis::batch::CreateVaultBatchResponse, ()> {
+        todo!("create_vault_batch not yet implemented")
+    }
+
+    async fn import_vault_batch(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _body: &models::BatchImportRequest,
+    ) -> Result<apis::batch::ImportVaultBatchResponse, ()> {
+        todo!("import_vault_batch not yet implemented")
+    }
+
+    async fn reshare_vault_batch(
+        &self,
+        _method: &Method,
+        _host: &Host,
+        _cookies: &CookieJar,
+        _body: &models::BatchReshareRequest,
+    ) -> Result<apis::batch::ReshareVaultBatchResponse, ()> {
+        todo!("reshare_vault_batch not yet implemented")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Proxy fallback
+// ---------------------------------------------------------------------------
+
 async fn proxy_handler(
     State(state): State<ApiImpl>,
     mut req: Request<Body>,
@@ -95,6 +253,10 @@ async fn proxy_handler(
         })
 }
 
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
@@ -110,7 +272,7 @@ async fn main() {
     let client = Client::builder(TokioExecutor::new()).build_http();
 
     let api_impl = ApiImpl {
-        upstream,
+        upstream: upstream.clone(),
         client,
     };
 
@@ -126,10 +288,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 80));
     tracing::info!("basalt-networking listening on {addr}");
-    tracing::info!(
-        "forwarding to {}",
-        std::env::var("UPSTREAM_URL").unwrap_or_else(|_| "http://vultiserver:8080".to_string())
-    );
+    tracing::info!("forwarding to {upstream}");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 
