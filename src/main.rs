@@ -1,7 +1,5 @@
 use axum::{
     body::Body,
-    extract::State,
-    http::{uri::Uri, Request},
     response::Response,
     routing::get,
     Router,
@@ -9,7 +7,6 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use headers::Host;
 use http::Method;
-use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 use std::net::SocketAddr;
 
 use basalt_networking_api_server::apis;
@@ -49,8 +46,6 @@ fn client_error_to_status<E: std::fmt::Debug>(
 
 #[derive(Clone)]
 struct ApiImpl {
-    upstream: String,
-    client: Client<hyper_util::client::legacy::connect::HttpConnector, Body>,
     admin_client: AdminConfig,
     vultiserver_client: VultiserverConfig,
 }
@@ -443,37 +438,6 @@ impl apis::batch::Batch for ApiImpl {
 }
 
 // ---------------------------------------------------------------------------
-// Proxy fallback
-// ---------------------------------------------------------------------------
-
-async fn proxy_handler(
-    State(state): State<ApiImpl>,
-    mut req: Request<Body>,
-) -> Response<Body> {
-    let path_and_query = req
-        .uri()
-        .path_and_query()
-        .map(|pq| pq.as_str())
-        .unwrap_or("/");
-
-    let uri = format!("{}{}", state.upstream, path_and_query);
-    *req.uri_mut() = Uri::try_from(uri).unwrap();
-
-    state
-        .client
-        .request(req)
-        .await
-        .map(|resp| resp.map(Body::new))
-        .unwrap_or_else(|err| {
-            tracing::error!("upstream request failed: {err}");
-            Response::builder()
-                .status(502)
-                .body(Body::from("Bad Gateway"))
-                .unwrap()
-        })
-}
-
-// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -491,8 +455,6 @@ async fn main() {
     let admin_url = std::env::var("ADMIN_INTERNAL_URL")
         .unwrap_or_else(|_| "http://admin-internal:3000".to_string());
 
-    let client = Client::builder(TokioExecutor::new()).build_http();
-
     let mut admin_config = AdminConfig::new();
     admin_config.base_path = admin_url;
 
@@ -500,15 +462,19 @@ async fn main() {
     vultiserver_config.base_path = upstream.clone();
 
     let api_impl = ApiImpl {
-        upstream: upstream.clone(),
-        client,
         admin_client: admin_config,
         vultiserver_client: vultiserver_config,
     };
 
-    // External port — spec'd endpoints + fallback proxy
+    // External port — spec'd endpoints only; unrecognized routes get 404
     let app = basalt_networking_api_server::server::new(api_impl.clone())
-        .fallback(proxy_handler)
+        .fallback(|| async {
+            Response::builder()
+                .status(http::StatusCode::NOT_FOUND)
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(r#"{"error":"endpoint not found"}"#))
+                .unwrap()
+        })
         .with_state(api_impl);
 
     // Internal port — accessible only within the Docker network
@@ -518,7 +484,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 80));
     tracing::info!("basalt-networking listening on {addr}");
-    tracing::info!("forwarding to {upstream}");
+    tracing::info!("upstream at {upstream}");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 
