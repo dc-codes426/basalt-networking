@@ -51,7 +51,8 @@ pub async fn health(configuration: &configuration::Configuration, ) -> Result<mo
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
-    if !status.is_client_error() && !status.is_server_error() {
+    // Both 200 (all healthy) and 503 (degraded) return a valid PingResponse body.
+    if status.as_u16() == 200 || status.as_u16() == 503 {
         let content = resp.text().await?;
         match content_type {
             ContentType::Json => serde_json::from_str(&content).map_err(Error::from),

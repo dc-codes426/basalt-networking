@@ -455,11 +455,19 @@ async fn main() {
     let admin_url = std::env::var("ADMIN_INTERNAL_URL")
         .unwrap_or_else(|_| "http://admin-internal:3000".to_string());
 
+    let http_client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(5))
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .expect("failed to build HTTP client");
+
     let mut admin_config = AdminConfig::new();
     admin_config.base_path = admin_url;
+    admin_config.client = http_client.clone();
 
     let mut vultiserver_config = VultiserverConfig::new();
     vultiserver_config.base_path = upstream.clone();
+    vultiserver_config.client = http_client;
 
     let api_impl = ApiImpl {
         admin_client: admin_config,
