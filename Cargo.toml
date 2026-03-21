@@ -31,3 +31,8 @@ tracing = { version = "0.1", features = ["attributes"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1", features = ["serde"] }
 validator = { version = "0.20", features = ["derive"] }
+
+reqwest = "0.13"
+
+basalt-admin-internal-client = { path = "clients/admin-internal" }
+basalt-vultiserver-client = { path = "clients/vultiserver" }
