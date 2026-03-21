@@ -12,9 +12,9 @@ use http::Method;
 use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 use std::net::SocketAddr;
 
-use basalt_networking::apis;
-use basalt_networking::apis::health::PingResponse;
-use basalt_networking::models;
+use basalt_networking_api_server::apis;
+use basalt_networking_api_server::apis::health::PingResponse;
+use basalt_networking_api_server::models;
 
 use basalt_admin_internal_client::apis::configuration::Configuration as AdminConfig;
 use basalt_admin_internal_client::apis::default_api as admin_api;
@@ -507,7 +507,7 @@ async fn main() {
     };
 
     // External port — spec'd endpoints + fallback proxy
-    let app = basalt_networking::server::new(api_impl.clone())
+    let app = basalt_networking_api_server::server::new(api_impl.clone())
         .fallback(proxy_handler)
         .with_state(api_impl);
 

@@ -3,36 +3,21 @@ name = "basalt-networking"
 version = "0.1.0"
 edition = "2024"
 
-[features]
-default = ["server"]
-server = []
-
 [dependencies]
-ammonia = "4"
 async-trait = "0.1"
-axum = { version = "0.8", features = ["multipart"] }
-axum-extra = { version = "0.12", features = ["cookie", "query", "typed-header"] }
-base64 = "0.22"
-bytes = "1"
-chrono = { version = "0.4", features = ["serde"] }
+axum = "0.8"
+axum-extra = { version = "0.12", features = ["cookie", "typed-header"] }
 headers = "0.4"
 http = "1"
-http-body-util = "0.1"
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
-lazy_static = "1"
-regex = "1"
-serde = { version = "1", features = ["derive"] }
-serde_html_form = "0.2"
-serde_json = { version = "1", features = ["raw_value"] }
-tokio = { version = "1", features = ["full"] }
-tower = "0.5"
-tracing = { version = "0.1", features = ["attributes"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "1", features = ["serde"] }
-validator = { version = "0.20", features = ["derive"] }
-
 reqwest = "0.13"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-basalt-admin-internal-client = { path = "clients/admin-internal" }
-basalt-vultiserver-client = { path = "clients/vultiserver" }
+basalt-networking-api-server = { path = "generated/api-server" }
+basalt-admin-internal-client = { path = "generated/api-clients/admin-internal" }
+basalt-vultiserver-client = { path = "generated/api-clients/vultiserver" }

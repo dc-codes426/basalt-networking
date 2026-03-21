@@ -2,7 +2,7 @@ FROM rust:1.94-bookworm AS builder
 
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
-COPY clients ./clients
+COPY generated ./generated
 COPY src ./src
 RUN cargo build --release
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLIENTS_DIR="$(cd "$SCRIPT_DIR/../generated-apiclients" && pwd)"
-DEST="$SCRIPT_DIR/clients"
+DEST="$SCRIPT_DIR/generated/api-clients"
 
 CLIENTS=(
   admin-internal
