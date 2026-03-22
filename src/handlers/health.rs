@@ -20,12 +20,20 @@ impl apis::health::Health for ApiImpl {
         match admin_api::health(&self.admin_client).await {
             Ok(health_resp) => {
                 let body = serde_json::to_string(&health_resp).unwrap_or_default();
-                Ok(PingResponse::Status200_ServerIsHealthy(body))
+                let all_healthy = health_resp
+                    .containers
+                    .iter()
+                    .all(|c| c.healthy);
+                if all_healthy {
+                    Ok(PingResponse::Status200_ServerIsHealthy(body))
+                } else {
+                    Ok(PingResponse::Status503_OneOrMoreDependenciesAreUnhealthy(body))
+                }
             }
             Err(err) => {
                 tracing::error!("admin-internal health check failed: {err}");
-                Ok(PingResponse::Status200_ServerIsHealthy(
-                    "unhealthy".to_string(),
+                Ok(PingResponse::Status503_OneOrMoreDependenciesAreUnhealthy(
+                    "admin-internal unreachable".to_string(),
                 ))
             }
         }

@@ -510,6 +510,20 @@ let result = api_impl.as_ref().ping(
                                                   let body_content = body;
                                                   response.body(Body::from(body_content))
                                                 },
+                                                apis::health::PingResponse::Status503_OneOrMoreDependenciesAreUnhealthy
+                                                    (body)
+                                                => {
+                                                  let mut response = response.status(503);
+                                                  {
+                                                    let mut response_headers = response.headers_mut().unwrap();
+                                                    response_headers.insert(
+                                                        CONTENT_TYPE,
+                                                        HeaderValue::from_static("text/plain"));
+                                                  }
+
+                                                  let body_content = body;
+                                                  response.body(Body::from(body_content))
+                                                },
                                             },
                                             Err(why) => {
                                                     // Application code returned an error. This should not happen, as the implementation should

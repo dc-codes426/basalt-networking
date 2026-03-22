@@ -15,6 +15,10 @@ pub enum PingResponse {
     /// Server is healthy
     Status200_ServerIsHealthy
     (String)
+    ,
+    /// One or more dependencies are unhealthy
+    Status503_OneOrMoreDependenciesAreUnhealthy
+    (String)
 }
 
 
