@@ -1,5 +1,7 @@
-use axum::{body::Body, response::Response, routing::get, Router};
+use axum::{body::Body, extract::DefaultBodyLimit, response::Response, routing::get, Router};
 use std::net::SocketAddr;
+use tower::ServiceBuilder;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 
 use basalt_networking_api_server::apis;
 
@@ -57,13 +59,28 @@ async fn main() {
         vultiserver_client: vultiserver_config,
     };
 
-    let app = basalt_networking_api_server::server::new(api_impl).fallback(|| async {
-        Response::builder()
-            .status(http::StatusCode::NOT_FOUND)
-            .header(http::header::CONTENT_TYPE, "application/json")
-            .body(Body::from(r#"{"error":"endpoint not found"}"#))
-            .unwrap()
-    });
+    // Rate limit: 5 requests/second per IP, burst up to 30
+    let governor_config = GovernorConfigBuilder::default()
+        .per_second(5)
+        .burst_size(30)
+        .finish()
+        .expect("failed to build rate limiter config");
+
+    let app = basalt_networking_api_server::server::new(api_impl)
+        .fallback(|| async {
+            Response::builder()
+                .status(http::StatusCode::NOT_FOUND)
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(r#"{"error":"endpoint not found"}"#))
+                .unwrap()
+        })
+        .layer(
+            ServiceBuilder::new()
+                .layer(DefaultBodyLimit::max(256 * 1024)) // 256 KB
+                .layer(GovernorLayer {
+                    config: governor_config.into(),
+                }),
+        );
 
     let internal_app = Router::new().route("/health", get(|| async { "ok" }));
     let internal_listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
