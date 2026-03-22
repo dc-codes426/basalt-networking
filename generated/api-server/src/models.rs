@@ -72,6 +72,7 @@ pub fn check_xss_map<T>(v: &std::collections::HashMap<String, T>) -> std::result
 
 
 
+
     #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
     #[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
     pub struct GetDerivedPublicKeyQueryParams {
@@ -765,6 +766,150 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<BatchVaultRe
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
 #[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
+pub struct ContainerStatus {
+    /// Service name
+    #[serde(rename = "name")]
+          #[validate(custom(function = "check_xss_string"))]
+    pub name: String,
+
+    /// Whether the service responded successfully
+    #[serde(rename = "healthy")]
+    pub healthy: bool,
+
+    /// Response body on success, or error message on failure
+    #[serde(rename = "detail")]
+          #[validate(custom(function = "check_xss_string"))]
+    pub detail: String,
+
+}
+
+
+
+impl ContainerStatus {
+    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
+    pub fn new(name: String, healthy: bool, detail: String, ) -> ContainerStatus {
+        ContainerStatus {
+ name,
+ healthy,
+ detail,
+        }
+    }
+}
+
+/// Converts the ContainerStatus value to the Query Parameters representation (style=form, explode=false)
+/// specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde serializer
+impl std::fmt::Display for ContainerStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let params: Vec<Option<String>> = vec![
+
+            Some("name".to_string()),
+            Some(self.name.to_string()),
+
+
+            Some("healthy".to_string()),
+            Some(self.healthy.to_string()),
+
+
+            Some("detail".to_string()),
+            Some(self.detail.to_string()),
+
+        ];
+
+        write!(f, "{}", params.into_iter().flatten().collect::<Vec<_>>().join(","))
+    }
+}
+
+/// Converts Query Parameters representation (style=form, explode=false) to a ContainerStatus value
+/// as specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde deserializer
+impl std::str::FromStr for ContainerStatus {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        /// An intermediate representation of the struct to use for parsing.
+        #[derive(Default)]
+        #[allow(dead_code)]
+        struct IntermediateRep {
+            pub name: Vec<String>,
+            pub healthy: Vec<bool>,
+            pub detail: Vec<String>,
+        }
+
+        let mut intermediate_rep = IntermediateRep::default();
+
+        // Parse into intermediate representation
+        let mut string_iter = s.split(',');
+        let mut key_result = string_iter.next();
+
+        while key_result.is_some() {
+            let val = match string_iter.next() {
+                Some(x) => x,
+                None => return std::result::Result::Err("Missing value while parsing ContainerStatus".to_string())
+            };
+
+            if let Some(key) = key_result {
+                #[allow(clippy::match_single_binding)]
+                match key {
+                    #[allow(clippy::redundant_clone)]
+                    "name" => intermediate_rep.name.push(<String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
+                    #[allow(clippy::redundant_clone)]
+                    "healthy" => intermediate_rep.healthy.push(<bool as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
+                    #[allow(clippy::redundant_clone)]
+                    "detail" => intermediate_rep.detail.push(<String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
+                    _ => return std::result::Result::Err("Unexpected key while parsing ContainerStatus".to_string())
+                }
+            }
+
+            // Get the next key
+            key_result = string_iter.next();
+        }
+
+        // Use the intermediate representation to return the struct
+        std::result::Result::Ok(ContainerStatus {
+            name: intermediate_rep.name.into_iter().next().ok_or_else(|| "name missing in ContainerStatus".to_string())?,
+            healthy: intermediate_rep.healthy.into_iter().next().ok_or_else(|| "healthy missing in ContainerStatus".to_string())?,
+            detail: intermediate_rep.detail.into_iter().next().ok_or_else(|| "detail missing in ContainerStatus".to_string())?,
+        })
+    }
+}
+
+// Methods for converting between header::IntoHeaderValue<ContainerStatus> and HeaderValue
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<header::IntoHeaderValue<ContainerStatus>> for HeaderValue {
+    type Error = String;
+
+    fn try_from(hdr_value: header::IntoHeaderValue<ContainerStatus>) -> std::result::Result<Self, Self::Error> {
+        let hdr_value = hdr_value.to_string();
+        match HeaderValue::from_str(&hdr_value) {
+             std::result::Result::Ok(value) => std::result::Result::Ok(value),
+             std::result::Result::Err(e) => std::result::Result::Err(format!(r#"Invalid header value for ContainerStatus - value: {hdr_value} is invalid {e}"#))
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<ContainerStatus> {
+    type Error = String;
+
+    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
+        match hdr_value.to_str() {
+             std::result::Result::Ok(value) => {
+                    match <ContainerStatus as std::str::FromStr>::from_str(value) {
+                        std::result::Result::Ok(value) => std::result::Result::Ok(header::IntoHeaderValue(value)),
+                        std::result::Result::Err(err) => std::result::Result::Err(format!(r#"Unable to convert header value '{value}' into ContainerStatus - {err}"#))
+                    }
+             },
+             std::result::Result::Err(e) => std::result::Result::Err(format!(r#"Unable to convert header: {hdr_value:?} to string: {e}"#))
+        }
+    }
+}
+
+
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
+#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
 pub struct CreateMldsaRequest {
     /// 66-character hex-encoded ECDSA public key of the existing vault
     #[serde(rename = "public_key")]
@@ -1044,6 +1189,120 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<Error> {
                     match <Error as std::str::FromStr>::from_str(value) {
                         std::result::Result::Ok(value) => std::result::Result::Ok(header::IntoHeaderValue(value)),
                         std::result::Result::Err(err) => std::result::Result::Err(format!(r#"Unable to convert header value '{value}' into Error - {err}"#))
+                    }
+             },
+             std::result::Result::Err(e) => std::result::Result::Err(format!(r#"Unable to convert header: {hdr_value:?} to string: {e}"#))
+        }
+    }
+}
+
+
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
+#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
+pub struct HealthResponse {
+    /// Health status of each monitored service
+    #[serde(rename = "containers")]
+          #[validate(nested)]
+    pub containers: Vec<models::ContainerStatus>,
+
+}
+
+
+
+impl HealthResponse {
+    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
+    pub fn new(containers: Vec<models::ContainerStatus>, ) -> HealthResponse {
+        HealthResponse {
+ containers,
+        }
+    }
+}
+
+/// Converts the HealthResponse value to the Query Parameters representation (style=form, explode=false)
+/// specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde serializer
+impl std::fmt::Display for HealthResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let params: Vec<Option<String>> = vec![
+            // Skipping containers in query parameter serialization
+
+        ];
+
+        write!(f, "{}", params.into_iter().flatten().collect::<Vec<_>>().join(","))
+    }
+}
+
+/// Converts Query Parameters representation (style=form, explode=false) to a HealthResponse value
+/// as specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde deserializer
+impl std::str::FromStr for HealthResponse {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        /// An intermediate representation of the struct to use for parsing.
+        #[derive(Default)]
+        #[allow(dead_code)]
+        struct IntermediateRep {
+            pub containers: Vec<Vec<models::ContainerStatus>>,
+        }
+
+        let mut intermediate_rep = IntermediateRep::default();
+
+        // Parse into intermediate representation
+        let mut string_iter = s.split(',');
+        let mut key_result = string_iter.next();
+
+        while key_result.is_some() {
+            let val = match string_iter.next() {
+                Some(x) => x,
+                None => return std::result::Result::Err("Missing value while parsing HealthResponse".to_string())
+            };
+
+            if let Some(key) = key_result {
+                #[allow(clippy::match_single_binding)]
+                match key {
+                    "containers" => return std::result::Result::Err("Parsing a container in this style is not supported in HealthResponse".to_string()),
+                    _ => return std::result::Result::Err("Unexpected key while parsing HealthResponse".to_string())
+                }
+            }
+
+            // Get the next key
+            key_result = string_iter.next();
+        }
+
+        // Use the intermediate representation to return the struct
+        std::result::Result::Ok(HealthResponse {
+            containers: intermediate_rep.containers.into_iter().next().ok_or_else(|| "containers missing in HealthResponse".to_string())?,
+        })
+    }
+}
+
+// Methods for converting between header::IntoHeaderValue<HealthResponse> and HeaderValue
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<header::IntoHeaderValue<HealthResponse>> for HeaderValue {
+    type Error = String;
+
+    fn try_from(hdr_value: header::IntoHeaderValue<HealthResponse>) -> std::result::Result<Self, Self::Error> {
+        let hdr_value = hdr_value.to_string();
+        match HeaderValue::from_str(&hdr_value) {
+             std::result::Result::Ok(value) => std::result::Result::Ok(value),
+             std::result::Result::Err(e) => std::result::Result::Err(format!(r#"Invalid header value for HealthResponse - value: {hdr_value} is invalid {e}"#))
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<HealthResponse> {
+    type Error = String;
+
+    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
+        match hdr_value.to_str() {
+             std::result::Result::Ok(value) => {
+                    match <HealthResponse as std::str::FromStr>::from_str(value) {
+                        std::result::Result::Ok(value) => std::result::Result::Ok(header::IntoHeaderValue(value)),
+                        std::result::Result::Err(err) => std::result::Result::Err(format!(r#"Unable to convert header value '{value}' into HealthResponse - {err}"#))
                     }
              },
              std::result::Result::Err(e) => std::result::Result::Err(format!(r#"Unable to convert header: {hdr_value:?} to string: {e}"#))

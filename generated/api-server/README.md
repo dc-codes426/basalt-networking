@@ -18,7 +18,7 @@ server, you can easily generate a server stub.
 To see how to make this your own, look here: [README]((https://openapi-generator.tech))
 
 - API version: 1.0.0
-- Build date: 2026-03-22T17:41:06.619154666-04:00[America/New_York]
+- Build date: 2026-03-22T18:39:16.135333947-04:00[America/New_York]
 - Generator version: 7.20.0
 
 
