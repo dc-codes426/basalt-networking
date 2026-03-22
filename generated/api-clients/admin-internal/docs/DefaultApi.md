@@ -14,7 +14,7 @@ Method | HTTP request | Description
 > models::PingResponse health()
 Dependency health check
 
-Checks the health of all dependent services concurrently: - **vultiserver**: HTTP GET to `http://vultiserver:8080/ping` - **networking**: HTTP GET to `http://networking:8080/health` - **redis**: TCP PING command to `redis:6379`  Always returns 200; inspect individual `healthy` fields for per-service status. 
+Checks the health of all dependent services concurrently: - **vultiserver**: HTTP GET to `http://vultiserver:8080/ping` - **networking**: HTTP GET to `http://networking:8080/health` - **redis**: TCP PING command to `redis:6379`  Returns 200 when all dependencies are healthy, 503 when any dependency is unhealthy. 
 
 ### Parameters
 

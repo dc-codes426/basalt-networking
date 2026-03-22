@@ -19,17 +19,13 @@ pub struct VaultResendRequest {
     /// Vault encryption password
     #[serde(rename = "password")]
     pub password: String,
-    /// Email address to resend the vault backup to
-    #[serde(rename = "email")]
-    pub email: String,
 }
 
 impl VaultResendRequest {
-    pub fn new(public_key_ecdsa: String, password: String, email: String) -> VaultResendRequest {
+    pub fn new(public_key_ecdsa: String, password: String) -> VaultResendRequest {
         VaultResendRequest {
             public_key_ecdsa,
             password,
-            email,
         }
     }
 }

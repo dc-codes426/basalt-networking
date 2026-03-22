@@ -19,6 +19,7 @@ use super::{Error, configuration, ContentType};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum HealthError {
+    Status503(models::PingResponse),
     UnknownValue(serde_json::Value),
 }
 
@@ -30,7 +31,7 @@ pub enum PingError {
 }
 
 
-/// Checks the health of all dependent services concurrently: - **vultiserver**: HTTP GET to `http://vultiserver:8080/ping` - **networking**: HTTP GET to `http://networking:8080/health` - **redis**: TCP PING command to `redis:6379`  Always returns 200; inspect individual `healthy` fields for per-service status. 
+/// Checks the health of all dependent services concurrently: - **vultiserver**: HTTP GET to `http://vultiserver:8080/ping` - **networking**: HTTP GET to `http://networking:8080/health` - **redis**: TCP PING command to `redis:6379`  Returns 200 when all dependencies are healthy, 503 when any dependency is unhealthy. 
 pub async fn health(configuration: &configuration::Configuration, ) -> Result<models::PingResponse, Error<HealthError>> {
 
     let uri_str = format!("{}/health", configuration.base_path);
@@ -51,8 +52,7 @@ pub async fn health(configuration: &configuration::Configuration, ) -> Result<mo
         .unwrap_or("application/octet-stream");
     let content_type = super::ContentType::from(content_type);
 
-    // Both 200 (all healthy) and 503 (degraded) return a valid PingResponse body.
-    if status.as_u16() == 200 || status.as_u16() == 503 {
+    if !status.is_client_error() && !status.is_server_error() {
         let content = resp.text().await?;
         match content_type {
             ContentType::Json => serde_json::from_str(&content).map_err(Error::from),

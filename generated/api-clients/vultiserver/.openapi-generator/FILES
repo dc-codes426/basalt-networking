@@ -19,7 +19,6 @@ docs/SigningApi.md
 docs/UtilityApi.md
 docs/VaultApi.md
 docs/VaultCreateRequest.md
-docs/VaultCreateResponse.md
 docs/VaultGetResponse.md
 docs/VaultResendRequest.md
 git_push.sh
@@ -44,6 +43,5 @@ src/models/mod.rs
 src/models/reshare_request.rs
 src/models/reshare_type.rs
 src/models/vault_create_request.rs
-src/models/vault_create_response.rs
 src/models/vault_get_response.rs
 src/models/vault_resend_request.rs

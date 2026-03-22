@@ -30,7 +30,6 @@ pub enum CreateMldsaVaultResponse {
 pub enum CreateVaultResponse {
     /// Vault creation initiated
     Status200_VaultCreationInitiated
-    (models::VaultCreateResponse)
     ,
     /// Validation error or malformed request
     Status400_ValidationErrorOrMalformedRequest

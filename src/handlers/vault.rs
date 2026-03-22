@@ -50,11 +50,8 @@ impl apis::vault::Vault for ApiImpl {
             tracing::error!("model conversion error: {e}");
         })?;
         match vault_api::create_vault(&self.vultiserver_client, req).await {
-            Ok(resp) => {
-                let resp: models::VaultCreateResponse = convert(&resp).map_err(|e| {
-                    tracing::error!("response conversion error: {e}");
-                })?;
-                Ok(apis::vault::CreateVaultResponse::Status200_VaultCreationInitiated(resp))
+            Ok(()) => {
+                Ok(apis::vault::CreateVaultResponse::Status200_VaultCreationInitiated)
             }
             Err(err) => {
                 let (status, error) = map_upstream_error(err);

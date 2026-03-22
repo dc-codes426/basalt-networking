@@ -48,7 +48,7 @@ No authorization required
 
 ## create_vault
 
-> models::VaultCreateResponse create_vault(vault_create_request)
+> create_vault(vault_create_request)
 Create a new vault (keygen)
 
 Initiates a new vault key generation ceremony. Enqueues an async `key:generation` (GG20) or `key:generationDKLS` (DKLS) task with a 7-minute timeout. The server participates as one party in the TSS protocol. 
@@ -62,7 +62,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-[**models::VaultCreateResponse**](VaultCreateResponse.md)
+ (empty response body)
 
 ### Authorization
 

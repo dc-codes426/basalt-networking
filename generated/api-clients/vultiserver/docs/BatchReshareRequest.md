@@ -9,7 +9,6 @@ Name | Type | Description | Notes
 **hex_encryption_key** | **String** | 32-byte hex-encoded encryption key | 
 **local_party_id** | Option<**String**> | Local TSS party identifier | [optional]
 **encryption_password** | **String** | Encryption password for the vault | 
-**email** | **String** | Email address for vault backup delivery | 
 **old_parties** | **Vec<String>** | List of party IDs from the previous share set | 
 **protocols** | **Vec<String>** | List of protocols to reshare across | 
 

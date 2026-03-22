@@ -13,9 +13,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VaultCreateResponse {
-    /// Vault name
-    #[serde(rename = "name", skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
     /// Session identifier
     #[serde(rename = "session_id", skip_serializing_if = "Option::is_none")]
     pub session_id: Option<uuid::Uuid>,
@@ -33,7 +30,6 @@ pub struct VaultCreateResponse {
 impl VaultCreateResponse {
     pub fn new() -> VaultCreateResponse {
         VaultCreateResponse {
-            name: None,
             session_id: None,
             hex_encryption_key: None,
             hex_chain_code: None,

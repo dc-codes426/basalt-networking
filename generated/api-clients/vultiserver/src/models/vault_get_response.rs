@@ -13,9 +13,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VaultGetResponse {
-    /// Vault name
-    #[serde(rename = "name", skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
     /// Hex-encoded ECDSA public key
     #[serde(rename = "public_key_ecdsa", skip_serializing_if = "Option::is_none")]
     pub public_key_ecdsa: Option<String>,
@@ -33,7 +30,6 @@ pub struct VaultGetResponse {
 impl VaultGetResponse {
     pub fn new() -> VaultGetResponse {
         VaultGetResponse {
-            name: None,
             public_key_ecdsa: None,
             public_key_eddsa: None,
             hex_chain_code: None,

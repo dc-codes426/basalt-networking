@@ -64,7 +64,6 @@ Class | Method | HTTP request | Description
  - [ReshareRequest](docs/ReshareRequest.md)
  - [ReshareType](docs/ReshareType.md)
  - [VaultCreateRequest](docs/VaultCreateRequest.md)
- - [VaultCreateResponse](docs/VaultCreateResponse.md)
  - [VaultGetResponse](docs/VaultGetResponse.md)
  - [VaultResendRequest](docs/VaultResendRequest.md)
 

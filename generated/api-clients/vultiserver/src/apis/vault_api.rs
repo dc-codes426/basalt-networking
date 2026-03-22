@@ -122,7 +122,7 @@ pub async fn create_mldsa_vault(configuration: &configuration::Configuration, cr
 }
 
 /// Initiates a new vault key generation ceremony. Enqueues an async `key:generation` (GG20) or `key:generationDKLS` (DKLS) task with a 7-minute timeout. The server participates as one party in the TSS protocol. 
-pub async fn create_vault(configuration: &configuration::Configuration, vault_create_request: models::VaultCreateRequest) -> Result<models::VaultCreateResponse, Error<CreateVaultError>> {
+pub async fn create_vault(configuration: &configuration::Configuration, vault_create_request: models::VaultCreateRequest) -> Result<(), Error<CreateVaultError>> {
     // add a prefix to parameters to efficiently prevent name collisions
     let p_body_vault_create_request = vault_create_request;
 
@@ -138,20 +138,9 @@ pub async fn create_vault(configuration: &configuration::Configuration, vault_cr
     let resp = configuration.client.execute(req).await?;
 
     let status = resp.status();
-    let content_type = resp
-        .headers()
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("application/octet-stream");
-    let content_type = super::ContentType::from(content_type);
 
     if !status.is_client_error() && !status.is_server_error() {
-        let content = resp.text().await?;
-        match content_type {
-            ContentType::Json => serde_json::from_str(&content).map_err(Error::from),
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `models::VaultCreateResponse`"))),
-            ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `models::VaultCreateResponse`")))),
-        }
+        Ok(())
     } else {
         let content = resp.text().await?;
         let entity: Option<CreateVaultError> = serde_json::from_str(&content).ok();

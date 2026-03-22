@@ -4,7 +4,6 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**name** | Option<**String**> | Vault name | [optional]
 **session_id** | Option<**uuid::Uuid**> | Session identifier | [optional]
 **hex_encryption_key** | Option<**String**> | Hex-encoded encryption key | [optional]
 **hex_chain_code** | Option<**String**> | Hex-encoded chain code | [optional]

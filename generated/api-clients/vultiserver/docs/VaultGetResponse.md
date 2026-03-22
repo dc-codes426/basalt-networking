@@ -4,7 +4,6 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**name** | Option<**String**> | Vault name | [optional]
 **public_key_ecdsa** | Option<**String**> | Hex-encoded ECDSA public key | [optional]
 **public_key_eddsa** | Option<**String**> | Hex-encoded EdDSA public key | [optional]
 **hex_chain_code** | Option<**String**> | Hex-encoded chain code | [optional]

@@ -4,7 +4,6 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**name** | **String** | Vault name | 
 **public_key** | **String** | Existing vault public key | 
 **session_id** | **uuid::Uuid** | Unique session identifier (UUID) | 
 **hex_encryption_key** | **String** | 32-byte hex-encoded encryption key | 
@@ -12,7 +11,6 @@ Name | Type | Description | Notes
 **local_party_id** | Option<**String**> | Local TSS party identifier | [optional]
 **old_parties** | **Vec<String>** | List of party IDs from the previous share set | 
 **encryption_password** | **String** | Encryption password (minimum 6 characters) | 
-**email** | **String** | Email address for vault backup delivery | 
 **old_reshare_prefix** | Option<**String**> | Prefix from previous reshare operation (if any) | [optional]
 **lib_type** | Option<[**models::LibType**](LibType.md)> |  | [optional]
 **reshare_type** | Option<[**models::ReshareType**](ReshareType.md)> |  | [optional]
