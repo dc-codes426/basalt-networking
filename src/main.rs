@@ -10,6 +10,7 @@ use basalt_vultiserver_client::apis::configuration::Configuration as Vultiserver
 
 mod error;
 mod handlers;
+mod middleware;
 
 #[derive(Clone)]
 pub struct ApiImpl {
@@ -59,10 +60,10 @@ async fn main() {
         vultiserver_client: vultiserver_config,
     };
 
-    // Rate limit: 5 requests/second per IP, burst up to 30
+    // Rate limit: 10 requests/second per IP, burst up to 100
     let governor_config = GovernorConfigBuilder::default()
-        .per_second(5)
-        .burst_size(30)
+        .per_second(10)
+        .burst_size(100)
         .finish()
         .expect("failed to build rate limiter config");
 
