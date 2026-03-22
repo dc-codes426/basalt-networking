@@ -1496,19 +1496,15 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<KeysignReque
 
 /// TSS library/protocol type
 /// Enumeration of values.
-/// Since this enum's variants do not hold data, we can easily define them as `#[repr(C)]`
-/// which helps with FFI.
+/// Patched by generate-server.sh: uses serde_repr for integer serialization.
 #[allow(non_camel_case_types, clippy::large_enum_variant)]
-#[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[repr(i32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde_repr::Serialize_repr, serde_repr::Deserialize_repr)]
 #[cfg_attr(feature = "conversion", derive(frunk_enum_derive::LabelledGenericEnum))]
 pub enum LibType {
-    #[serde(rename = "0")]
-    GG20,
-    #[serde(rename = "1")]
-    DKLS,
-    #[serde(rename = "2")]
-    KeyImport,
+    GG20 = 0,
+    DKLS = 1,
+    KeyImport = 2,
 }
 
 impl validator::Validate for LibType
@@ -1966,17 +1962,14 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<ReshareReque
 
 /// Reshare operation type
 /// Enumeration of values.
-/// Since this enum's variants do not hold data, we can easily define them as `#[repr(C)]`
-/// which helps with FFI.
+/// Patched by generate-server.sh: uses serde_repr for integer serialization.
 #[allow(non_camel_case_types, clippy::large_enum_variant)]
-#[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[repr(i32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde_repr::Serialize_repr, serde_repr::Deserialize_repr)]
 #[cfg_attr(feature = "conversion", derive(frunk_enum_derive::LabelledGenericEnum))]
 pub enum ReshareType {
-    #[serde(rename = "0")]
-    Normal,
-    #[serde(rename = "1")]
-    Plugin,
+    Normal = 0,
+    Plugin = 1,
 }
 
 impl validator::Validate for ReshareType

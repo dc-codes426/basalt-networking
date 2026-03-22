@@ -19,7 +19,7 @@ pub enum CreateVaultBatchResponse {
     Status400_ValidationErrorOrMalformedRequest
     (models::Error)
     ,
-    /// Rate limit exceeded (5 req/s, 30 burst, 5-min window)
+    /// Rate limit exceeded (10 req/s, 100 burst)
     Status429_RateLimitExceeded
     (models::Error)
 }
@@ -35,7 +35,7 @@ pub enum ImportVaultBatchResponse {
     Status400_ValidationErrorOrMalformedRequest
     (models::Error)
     ,
-    /// Rate limit exceeded (5 req/s, 30 burst, 5-min window)
+    /// Rate limit exceeded (10 req/s, 100 burst)
     Status429_RateLimitExceeded
     (models::Error)
 }
@@ -51,7 +51,7 @@ pub enum ReshareVaultBatchResponse {
     Status400_ValidationErrorOrMalformedRequest
     (models::Error)
     ,
-    /// Rate limit exceeded (5 req/s, 30 burst, 5-min window)
+    /// Rate limit exceeded (10 req/s, 100 burst)
     Status429_RateLimitExceeded
     (models::Error)
 }

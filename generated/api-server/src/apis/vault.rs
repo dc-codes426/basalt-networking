@@ -19,7 +19,7 @@ pub enum CreateMldsaVaultResponse {
     Status400_ValidationErrorOrMalformedRequest
     (models::Error)
     ,
-    /// Rate limit exceeded (5 req/s, 30 burst, 5-min window)
+    /// Rate limit exceeded (10 req/s, 100 burst)
     Status429_RateLimitExceeded
     (models::Error)
 }
@@ -36,7 +36,7 @@ pub enum CreateVaultResponse {
     Status400_ValidationErrorOrMalformedRequest
     (models::Error)
     ,
-    /// Rate limit exceeded (5 req/s, 30 burst, 5-min window)
+    /// Rate limit exceeded (10 req/s, 100 burst)
     Status429_RateLimitExceeded
     (models::Error)
 }
@@ -83,7 +83,7 @@ pub enum ImportVaultResponse {
     Status400_ValidationErrorOrMalformedRequest
     (models::Error)
     ,
-    /// Rate limit exceeded (5 req/s, 30 burst, 5-min window)
+    /// Rate limit exceeded (10 req/s, 100 burst)
     Status429_RateLimitExceeded
     (models::Error)
 }
@@ -99,7 +99,7 @@ pub enum MigrateVaultResponse {
     Status400_ValidationErrorOrMalformedRequest
     (models::Error)
     ,
-    /// Rate limit exceeded (5 req/s, 30 burst, 5-min window)
+    /// Rate limit exceeded (10 req/s, 100 burst)
     Status429_RateLimitExceeded
     (models::Error)
 }
@@ -115,7 +115,7 @@ pub enum ReshareVaultResponse {
     Status400_ValidationErrorOrMalformedRequest
     (models::Error)
     ,
-    /// Rate limit exceeded (5 req/s, 30 burst, 5-min window)
+    /// Rate limit exceeded (10 req/s, 100 burst)
     Status429_RateLimitExceeded
     (models::Error)
 }
