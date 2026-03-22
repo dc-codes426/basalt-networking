@@ -117,7 +117,7 @@ async fn main() {
                 .expect("internal server failed")
         },
         async {
-            axum::serve(listener, app)
+            axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
                 .with_graceful_shutdown(async move { rx2.changed().await.ok(); })
                 .await
                 .expect("external server failed")
