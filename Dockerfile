@@ -14,5 +14,5 @@ COPY --from=builder /app/target/release/basalt-networking /usr/local/bin/basalt-
 
 ENV UPSTREAM_URL=http://vultiserver:8080
 
-EXPOSE 80
+EXPOSE 80 8080
 CMD ["basalt-networking"]

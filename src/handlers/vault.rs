@@ -30,7 +30,10 @@ impl apis::vault::Vault for ApiImpl {
                 match status {
                     400 => Ok(apis::vault::CreateMldsaVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
                     429 => Ok(apis::vault::CreateMldsaVaultResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
+                    _ => {
+                        tracing::error!("create_mldsa_vault unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
                 }
             }
         }
@@ -58,7 +61,10 @@ impl apis::vault::Vault for ApiImpl {
                 match status {
                     400 => Ok(apis::vault::CreateVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
                     429 => Ok(apis::vault::CreateVaultResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
+                    _ => {
+                        tracing::error!("create_vault unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
                 }
             }
         }
@@ -74,14 +80,16 @@ impl apis::vault::Vault for ApiImpl {
         match vault_api::exist_vault(&self.vultiserver_client, &path_params.public_key_ecdsa).await
         {
             Ok(()) => Ok(apis::vault::ExistVaultResponse::Status200_VaultExists),
-            Err(basalt_vultiserver_client::apis::Error::ResponseError(resp))
-                if resp.status == reqwest::StatusCode::NOT_FOUND =>
-            {
-                Ok(apis::vault::ExistVaultResponse::Status404_VaultNotFound)
-            }
             Err(err) => {
-                tracing::error!("exist_vault upstream error: {err}");
-                Err(())
+                let (status, error) = map_upstream_error(err);
+                match status {
+                    400 => Ok(apis::vault::ExistVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
+                    404 => Ok(apis::vault::ExistVaultResponse::Status404_VaultNotFound),
+                    _ => {
+                        tracing::error!("exist_vault unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
+                }
             }
         }
     }
@@ -112,7 +120,10 @@ impl apis::vault::Vault for ApiImpl {
                 match status {
                     400 => Ok(apis::vault::GetVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
                     404 => Ok(apis::vault::GetVaultResponse::Status404_VaultNotFound),
-                    _ => Err(()),
+                    _ => {
+                        tracing::error!("get_vault unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
                 }
             }
         }
@@ -135,7 +146,10 @@ impl apis::vault::Vault for ApiImpl {
                 match status {
                     400 => Ok(apis::vault::ImportVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
                     429 => Ok(apis::vault::ImportVaultResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
+                    _ => {
+                        tracing::error!("import_vault unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
                 }
             }
         }
@@ -158,7 +172,10 @@ impl apis::vault::Vault for ApiImpl {
                 match status {
                     400 => Ok(apis::vault::MigrateVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
                     429 => Ok(apis::vault::MigrateVaultResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
+                    _ => {
+                        tracing::error!("migrate_vault unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
                 }
             }
         }
@@ -181,7 +198,10 @@ impl apis::vault::Vault for ApiImpl {
                 match status {
                     400 => Ok(apis::vault::ReshareVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
                     429 => Ok(apis::vault::ReshareVaultResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
+                    _ => {
+                        tracing::error!("reshare_vault unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
                 }
             }
         }

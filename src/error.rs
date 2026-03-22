@@ -3,8 +3,8 @@ use basalt_networking_api_server::models;
 /// Convert a networking model to a vultiserver client model via JSON roundtrip.
 /// Both are generated from the same OpenAPI spec so their serde representations match.
 pub fn convert<T: serde::Serialize, U: serde::de::DeserializeOwned>(from: &T) -> Result<U, String> {
-    let json = serde_json::to_value(from).map_err(|e| e.to_string())?;
-    serde_json::from_value(json).map_err(|e| e.to_string())
+    let bytes = serde_json::to_vec(from).map_err(|e| e.to_string())?;
+    serde_json::from_slice(&bytes).map_err(|e| e.to_string())
 }
 
 /// Map a vultiserver client error into a (status_code, error_json) pair.

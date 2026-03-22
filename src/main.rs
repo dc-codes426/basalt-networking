@@ -44,6 +44,8 @@ async fn main() {
     let http_client = reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(5))
         .timeout(std::time::Duration::from_secs(30))
+        .pool_max_idle_per_host(32)
+        .pool_idle_timeout(std::time::Duration::from_secs(90))
         .build()
         .expect("failed to build HTTP client");
 
@@ -77,6 +79,7 @@ async fn main() {
         })
         .layer(
             ServiceBuilder::new()
+                .layer(axum::middleware::from_fn(middleware::remap_422))
                 .layer(tower_http::trace::TraceLayer::new_for_http())
                 .layer(DefaultBodyLimit::max(256 * 1024)) // 256 KB
                 .layer(GovernorLayer {

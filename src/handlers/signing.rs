@@ -32,7 +32,10 @@ impl apis::signing::Signing for ApiImpl {
                 match status {
                     400 => Ok(apis::signing::SignMessagesResponse::Status400_ValidationErrorOrMalformedRequest(error)),
                     429 => Ok(apis::signing::SignMessagesResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
+                    _ => {
+                        tracing::error!("sign_messages unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
                 }
             }
         }

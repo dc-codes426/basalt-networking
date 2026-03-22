@@ -30,7 +30,10 @@ impl apis::batch::Batch for ApiImpl {
                 match status {
                     400 => Ok(apis::batch::CreateVaultBatchResponse::Status400_ValidationErrorOrMalformedRequest(error)),
                     429 => Ok(apis::batch::CreateVaultBatchResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
+                    _ => {
+                        tracing::error!("create_vault_batch unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
                 }
             }
         }
@@ -53,7 +56,10 @@ impl apis::batch::Batch for ApiImpl {
                 match status {
                     400 => Ok(apis::batch::ImportVaultBatchResponse::Status400_ValidationErrorOrMalformedRequest(error)),
                     429 => Ok(apis::batch::ImportVaultBatchResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
+                    _ => {
+                        tracing::error!("import_vault_batch unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
                 }
             }
         }
@@ -78,7 +84,10 @@ impl apis::batch::Batch for ApiImpl {
                 match status {
                     400 => Ok(apis::batch::ReshareVaultBatchResponse::Status400_ValidationErrorOrMalformedRequest(error)),
                     429 => Ok(apis::batch::ReshareVaultBatchResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
+                    _ => {
+                        tracing::error!("reshare_vault_batch unexpected upstream status {status}: {error:?}");
+                        Err(())
+                    }
                 }
             }
         }
