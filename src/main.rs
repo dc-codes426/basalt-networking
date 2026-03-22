@@ -97,8 +97,32 @@ async fn main() {
         .await
         .expect("failed to bind listener on 0.0.0.0:80");
 
+    let shutdown = tokio::sync::watch::channel(());
+    let (shutdown_tx, _) = shutdown;
+
+    let mut rx1 = shutdown_tx.subscribe();
+    let mut rx2 = shutdown_tx.subscribe();
+
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.ok();
+        tracing::info!("shutdown signal received, draining connections...");
+        drop(shutdown_tx);
+    });
+
     tokio::join!(
-        async { axum::serve(internal_listener, internal_app).await.expect("internal server failed") },
-        async { axum::serve(listener, app).await.expect("external server failed") },
+        async {
+            axum::serve(internal_listener, internal_app)
+                .with_graceful_shutdown(async move { rx1.changed().await.ok(); })
+                .await
+                .expect("internal server failed")
+        },
+        async {
+            axum::serve(listener, app)
+                .with_graceful_shutdown(async move { rx2.changed().await.ok(); })
+                .await
+                .expect("external server failed")
+        },
     );
+
+    tracing::info!("shutdown complete");
 }
