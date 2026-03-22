@@ -1,53 +1,18 @@
-use axum::{
-    body::Body,
-    response::Response,
-    routing::get,
-    Router,
-};
-use axum_extra::extract::CookieJar;
-use headers::Host;
-use http::Method;
+use axum::{body::Body, response::Response, routing::get, Router};
 use std::net::SocketAddr;
 
 use basalt_networking_api_server::apis;
-use basalt_networking_api_server::apis::health::PingResponse;
-use basalt_networking_api_server::models;
 
 use basalt_admin_internal_client::apis::configuration::Configuration as AdminConfig;
-use basalt_admin_internal_client::apis::default_api as admin_api;
-
 use basalt_vultiserver_client::apis::configuration::Configuration as VultiserverConfig;
-use basalt_vultiserver_client::apis::{
-    batch_api, signing_api, utility_api, vault_api,
-};
-use basalt_vultiserver_client::models as vs_models;
 
-/// Convert a networking model to a vultiserver client model via JSON roundtrip.
-/// Both are generated from the same OpenAPI spec so their serde representations match.
-fn convert<T: serde::Serialize, U: serde::de::DeserializeOwned>(from: &T) -> Result<U, String> {
-    let json = serde_json::to_value(from).map_err(|e| e.to_string())?;
-    serde_json::from_value(json).map_err(|e| e.to_string())
-}
-
-/// Map a vultiserver client error into a (status_code, error_json) pair.
-fn client_error_to_status<E: std::fmt::Debug>(
-    err: basalt_vultiserver_client::apis::Error<E>,
-) -> (u16, String) {
-    match err {
-        basalt_vultiserver_client::apis::Error::ResponseError(resp) => {
-            (resp.status.as_u16(), resp.content)
-        }
-        other => {
-            tracing::error!("vultiserver client error: {other:?}");
-            (502, "Bad Gateway".to_string())
-        }
-    }
-}
+mod error;
+mod handlers;
 
 #[derive(Clone)]
-struct ApiImpl {
-    admin_client: AdminConfig,
-    vultiserver_client: VultiserverConfig,
+pub struct ApiImpl {
+    pub admin_client: AdminConfig,
+    pub vultiserver_client: VultiserverConfig,
 }
 
 impl AsRef<ApiImpl> for ApiImpl {
@@ -58,388 +23,6 @@ impl AsRef<ApiImpl> for ApiImpl {
 
 #[async_trait::async_trait]
 impl apis::ErrorHandler<()> for ApiImpl {}
-
-// ---------------------------------------------------------------------------
-// Health
-// ---------------------------------------------------------------------------
-
-#[async_trait::async_trait]
-impl apis::health::Health for ApiImpl {
-    async fn ping(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-    ) -> Result<PingResponse, ()> {
-        match admin_api::health(&self.admin_client).await {
-            Ok(health_resp) => {
-                let body = serde_json::to_string(&health_resp).unwrap_or_default();
-                Ok(PingResponse::Status200_ServerIsHealthy(body))
-            }
-            Err(err) => {
-                tracing::error!("admin-internal health check failed: {err}");
-                Ok(PingResponse::Status200_ServerIsHealthy(
-                    "unhealthy".to_string(),
-                ))
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Utility
-// ---------------------------------------------------------------------------
-
-#[async_trait::async_trait]
-impl apis::utility::Utility for ApiImpl {
-    async fn get_derived_public_key(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        query_params: &models::GetDerivedPublicKeyQueryParams,
-    ) -> Result<apis::utility::GetDerivedPublicKeyResponse, ()> {
-        match utility_api::get_derived_public_key(
-            &self.vultiserver_client,
-            &query_params.public_key,
-            &query_params.hex_chain_code,
-            &query_params.derive_path,
-            query_params.is_ed_dsa,
-        )
-        .await
-        {
-            Ok(key) => Ok(
-                apis::utility::GetDerivedPublicKeyResponse::Status200_DerivedPublicKey(key),
-            ),
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                if status == 400 {
-                    let error: models::Error =
-                        serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                    Ok(apis::utility::GetDerivedPublicKeyResponse::Status400_ValidationErrorOrMalformedRequest(error))
-                } else {
-                    tracing::error!("get_derived_public_key upstream error: {status} {content}");
-                    Err(())
-                }
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Vault
-// ---------------------------------------------------------------------------
-
-#[async_trait::async_trait]
-impl apis::vault::Vault for ApiImpl {
-    async fn create_mldsa_vault(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        body: &models::CreateMldsaRequest,
-    ) -> Result<apis::vault::CreateMldsaVaultResponse, ()> {
-        let req: vs_models::CreateMldsaRequest = convert(body).map_err(|e| {
-            tracing::error!("model conversion error: {e}");
-        })?;
-        match vault_api::create_mldsa_vault(&self.vultiserver_client, req).await {
-            Ok(()) => Ok(apis::vault::CreateMldsaVaultResponse::Status200_ML),
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                let error: models::Error =
-                    serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                match status {
-                    400 => Ok(apis::vault::CreateMldsaVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
-                    429 => Ok(apis::vault::CreateMldsaVaultResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-
-    async fn create_vault(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        body: &models::VaultCreateRequest,
-    ) -> Result<apis::vault::CreateVaultResponse, ()> {
-        let req: vs_models::VaultCreateRequest = convert(body).map_err(|e| {
-            tracing::error!("model conversion error: {e}");
-        })?;
-        match vault_api::create_vault(&self.vultiserver_client, req).await {
-            Ok(resp) => {
-                let resp: models::VaultCreateResponse = convert(&resp).map_err(|e| {
-                    tracing::error!("response conversion error: {e}");
-                })?;
-                Ok(apis::vault::CreateVaultResponse::Status200_VaultCreationInitiated(resp))
-            }
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                let error: models::Error =
-                    serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                match status {
-                    400 => Ok(apis::vault::CreateVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
-                    429 => Ok(apis::vault::CreateVaultResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-
-    async fn exist_vault(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        path_params: &models::ExistVaultPathParams,
-    ) -> Result<apis::vault::ExistVaultResponse, ()> {
-        match vault_api::exist_vault(&self.vultiserver_client, &path_params.public_key_ecdsa).await
-        {
-            Ok(()) => Ok(apis::vault::ExistVaultResponse::Status200_VaultExists),
-            Err(basalt_vultiserver_client::apis::Error::ResponseError(resp))
-                if resp.status == reqwest::StatusCode::NOT_FOUND =>
-            {
-                Ok(apis::vault::ExistVaultResponse::Status404_VaultNotFound)
-            }
-            Err(err) => {
-                tracing::error!("exist_vault upstream error: {err}");
-                Err(())
-            }
-        }
-    }
-
-    async fn get_vault(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        header_params: &models::GetVaultHeaderParams,
-        path_params: &models::GetVaultPathParams,
-    ) -> Result<apis::vault::GetVaultResponse, ()> {
-        match vault_api::get_vault(
-            &self.vultiserver_client,
-            &path_params.public_key_ecdsa,
-            &header_params.x_password,
-        )
-        .await
-        {
-            Ok(resp) => {
-                let resp: models::VaultGetResponse = convert(&resp).map_err(|e| {
-                    tracing::error!("response conversion error: {e}");
-                })?;
-                Ok(apis::vault::GetVaultResponse::Status200_VaultMetadata(resp))
-            }
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                let error: models::Error =
-                    serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                match status {
-                    400 => Ok(apis::vault::GetVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
-                    404 => Ok(apis::vault::GetVaultResponse::Status404_VaultNotFound),
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-
-    async fn import_vault(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        body: &models::KeyImportRequest,
-    ) -> Result<apis::vault::ImportVaultResponse, ()> {
-        let req: vs_models::KeyImportRequest = convert(body).map_err(|e| {
-            tracing::error!("model conversion error: {e}");
-        })?;
-        match vault_api::import_vault(&self.vultiserver_client, req).await {
-            Ok(()) => Ok(apis::vault::ImportVaultResponse::Status204_ImportTaskEnqueued),
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                let error: models::Error =
-                    serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                match status {
-                    400 => Ok(apis::vault::ImportVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
-                    429 => Ok(apis::vault::ImportVaultResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-
-    async fn migrate_vault(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        body: &models::MigrationRequest,
-    ) -> Result<apis::vault::MigrateVaultResponse, ()> {
-        let req: vs_models::MigrationRequest = convert(body).map_err(|e| {
-            tracing::error!("model conversion error: {e}");
-        })?;
-        match vault_api::migrate_vault(&self.vultiserver_client, req).await {
-            Ok(()) => Ok(apis::vault::MigrateVaultResponse::Status204_MigrationTaskEnqueued),
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                let error: models::Error =
-                    serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                match status {
-                    400 => Ok(apis::vault::MigrateVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
-                    429 => Ok(apis::vault::MigrateVaultResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-
-    async fn reshare_vault(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        body: &models::ReshareRequest,
-    ) -> Result<apis::vault::ReshareVaultResponse, ()> {
-        let req: vs_models::ReshareRequest = convert(body).map_err(|e| {
-            tracing::error!("model conversion error: {e}");
-        })?;
-        match vault_api::reshare_vault(&self.vultiserver_client, req).await {
-            Ok(()) => Ok(apis::vault::ReshareVaultResponse::Status204_ReshareTaskEnqueued),
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                let error: models::Error =
-                    serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                match status {
-                    400 => Ok(apis::vault::ReshareVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
-                    429 => Ok(apis::vault::ReshareVaultResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Signing
-// ---------------------------------------------------------------------------
-
-#[async_trait::async_trait]
-impl apis::signing::Signing for ApiImpl {
-    async fn sign_messages(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        body: &models::KeysignRequest,
-    ) -> Result<apis::signing::SignMessagesResponse, ()> {
-        let req: vs_models::KeysignRequest = convert(body).map_err(|e| {
-            tracing::error!("model conversion error: {e}");
-        })?;
-        match signing_api::sign_messages(&self.vultiserver_client, req).await {
-            Ok(task_id) => Ok(
-                apis::signing::SignMessagesResponse::Status200_SigningTaskEnqueued(task_id),
-            ),
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                let error: models::Error =
-                    serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                match status {
-                    400 => Ok(apis::signing::SignMessagesResponse::Status400_ValidationErrorOrMalformedRequest(error)),
-                    429 => Ok(apis::signing::SignMessagesResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Batch
-// ---------------------------------------------------------------------------
-
-#[async_trait::async_trait]
-impl apis::batch::Batch for ApiImpl {
-    async fn create_vault_batch(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        body: &models::BatchVaultRequest,
-    ) -> Result<apis::batch::CreateVaultBatchResponse, ()> {
-        let req: vs_models::BatchVaultRequest = convert(body).map_err(|e| {
-            tracing::error!("model conversion error: {e}");
-        })?;
-        match batch_api::create_vault_batch(&self.vultiserver_client, req).await {
-            Ok(()) => Ok(apis::batch::CreateVaultBatchResponse::Status204_BatchKeygenTaskEnqueued),
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                let error: models::Error =
-                    serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                match status {
-                    400 => Ok(apis::batch::CreateVaultBatchResponse::Status400_ValidationErrorOrMalformedRequest(error)),
-                    429 => Ok(apis::batch::CreateVaultBatchResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-
-    async fn import_vault_batch(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        body: &models::BatchImportRequest,
-    ) -> Result<apis::batch::ImportVaultBatchResponse, ()> {
-        let req: vs_models::BatchImportRequest = convert(body).map_err(|e| {
-            tracing::error!("model conversion error: {e}");
-        })?;
-        match batch_api::import_vault_batch(&self.vultiserver_client, req).await {
-            Ok(()) => Ok(apis::batch::ImportVaultBatchResponse::Status204_BatchImportTaskEnqueued),
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                let error: models::Error =
-                    serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                match status {
-                    400 => Ok(apis::batch::ImportVaultBatchResponse::Status400_ValidationErrorOrMalformedRequest(error)),
-                    429 => Ok(apis::batch::ImportVaultBatchResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-
-    async fn reshare_vault_batch(
-        &self,
-        _method: &Method,
-        _host: &Host,
-        _cookies: &CookieJar,
-        body: &models::BatchReshareRequest,
-    ) -> Result<apis::batch::ReshareVaultBatchResponse, ()> {
-        let req: vs_models::BatchReshareRequest = convert(body).map_err(|e| {
-            tracing::error!("model conversion error: {e}");
-        })?;
-        match batch_api::reshare_vault_batch(&self.vultiserver_client, req).await {
-            Ok(()) => {
-                Ok(apis::batch::ReshareVaultBatchResponse::Status204_BatchReshareTaskEnqueued)
-            }
-            Err(err) => {
-                let (status, content) = client_error_to_status(err);
-                let error: models::Error =
-                    serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                match status {
-                    400 => Ok(apis::batch::ReshareVaultBatchResponse::Status400_ValidationErrorOrMalformedRequest(error)),
-                    429 => Ok(apis::batch::ReshareVaultBatchResponse::Status429_RateLimitExceeded(error)),
-                    _ => Err(()),
-                }
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
 
 #[tokio::main]
 async fn main() {
@@ -474,29 +57,30 @@ async fn main() {
         vultiserver_client: vultiserver_config,
     };
 
-    // External port — spec'd endpoints only; unrecognized routes get 404
-    let app = basalt_networking_api_server::server::new(api_impl)
-        .fallback(|| async {
-            Response::builder()
-                .status(http::StatusCode::NOT_FOUND)
-                .header(http::header::CONTENT_TYPE, "application/json")
-                .body(Body::from(r#"{"error":"endpoint not found"}"#))
-                .unwrap()
-        });
+    let app = basalt_networking_api_server::server::new(api_impl).fallback(|| async {
+        Response::builder()
+            .status(http::StatusCode::NOT_FOUND)
+            .header(http::header::CONTENT_TYPE, "application/json")
+            .body(Body::from(r#"{"error":"endpoint not found"}"#))
+            .unwrap()
+    });
 
-    // Internal port — accessible only within the Docker network
     let internal_app = Router::new().route("/health", get(|| async { "ok" }));
-    let internal_listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    let internal_listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
+        .await
+        .expect("failed to bind internal listener on 0.0.0.0:8080");
     tracing::info!("basalt-networking internal listening on 0.0.0.0:8080");
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 80));
     tracing::info!("basalt-networking listening on {addr}");
     tracing::info!("upstream at {upstream}");
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("failed to bind listener on 0.0.0.0:80");
 
     tokio::join!(
-        async { axum::serve(internal_listener, internal_app).await.unwrap() },
-        async { axum::serve(listener, app).await.unwrap() },
+        async { axum::serve(internal_listener, internal_app).await.expect("internal server failed") },
+        async { axum::serve(listener, app).await.expect("external server failed") },
     );
 }
