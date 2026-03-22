@@ -62,7 +62,7 @@ async fn main() {
 
     // Rate limit: 10 requests/second per IP, burst up to 100
     let governor_config = GovernorConfigBuilder::default()
-        .per_second(10)
+        .per_millisecond(100)
         .burst_size(100)
         .finish()
         .expect("failed to build rate limiter config");
