@@ -21,14 +21,13 @@ use crate::{
 };
 
 
-/// Setup API Server. Returns a Router with state still attached,
-/// so callers can add fallback handlers before consuming state.
-pub fn new<I, A, E>(api_impl: I) -> Router<I>
+/// Setup API Server.
+pub fn new<I, A, E>(api_impl: I) -> Router
 where
     I: AsRef<A> + Clone + Send + Sync + 'static,
     A: apis::batch::Batch<E> + apis::health::Health<E> + apis::signing::Signing<E> + apis::utility::Utility<E> + apis::vault::Vault<E> + Send + Sync + 'static,
     E: std::fmt::Debug + Send + Sync + 'static,
-
+    
 {
     // build our application with a route
     Router::new()
@@ -71,6 +70,7 @@ where
         .route("/vault/sign",
             post(sign_messages::<I, A, E>)
         )
+        .with_state(api_impl)
 }
 
     #[derive(validator::Validate)]
@@ -500,20 +500,6 @@ let result = api_impl.as_ref().ping(
                                                     (body)
                                                 => {
                                                   let mut response = response.status(200);
-                                                  {
-                                                    let mut response_headers = response.headers_mut().unwrap();
-                                                    response_headers.insert(
-                                                        CONTENT_TYPE,
-                                                        HeaderValue::from_static("text/plain"));
-                                                  }
-
-                                                  let body_content = body;
-                                                  response.body(Body::from(body_content))
-                                                },
-                                                apis::health::PingResponse::Status502_OneOrMoreBackingServicesAreUnreachable
-                                                    (body)
-                                                => {
-                                                  let mut response = response.status(502);
                                                   {
                                                     let mut response_headers = response.headers_mut().unwrap();
                                                     response_headers.insert(
@@ -1108,6 +1094,24 @@ let result = api_impl.as_ref().exist_vault(
                                                   let mut response = response.status(200);
                                                   response.body(Body::empty())
                                                 },
+                                                apis::vault::ExistVaultResponse::Status400_ValidationErrorOrMalformedRequest
+                                                    (body)
+                                                => {
+                                                  let mut response = response.status(400);
+                                                  {
+                                                    let mut response_headers = response.headers_mut().unwrap();
+                                                    response_headers.insert(
+                                                        CONTENT_TYPE,
+                                                        HeaderValue::from_static("application/json"));
+                                                  }
+
+                                                  let body_content =  tokio::task::spawn_blocking(move ||
+                                                      serde_json::to_vec(&body).map_err(|e| {
+                                                        error!(error = ?e);
+                                                        StatusCode::INTERNAL_SERVER_ERROR
+                                                      })).await.unwrap()?;
+                                                  response.body(Body::from(body_content))
+                                                },
                                                 apis::vault::ExistVaultResponse::Status404_VaultNotFound
                                                 => {
                                                   let mut response = response.status(404);
@@ -1257,6 +1261,11 @@ let result = api_impl.as_ref().get_vault(
                                                         StatusCode::INTERNAL_SERVER_ERROR
                                                       })).await.unwrap()?;
                                                   response.body(Body::from(body_content))
+                                                },
+                                                apis::vault::GetVaultResponse::Status404_VaultNotFound
+                                                => {
+                                                  let mut response = response.status(404);
+                                                  response.body(Body::empty())
                                                 },
                                             },
                                             Err(why) => {

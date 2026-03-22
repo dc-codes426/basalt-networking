@@ -15,10 +15,6 @@ pub enum PingResponse {
     /// Server is healthy
     Status200_ServerIsHealthy
     (String)
-    ,
-    /// One or more backing services are unreachable.
-    Status502_OneOrMoreBackingServicesAreUnreachable
-    (String)
 }
 
 

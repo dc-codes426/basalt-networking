@@ -48,6 +48,10 @@ pub enum ExistVaultResponse {
     /// Vault exists
     Status200_VaultExists
     ,
+    /// Validation error or malformed request
+    Status400_ValidationErrorOrMalformedRequest
+    (models::Error)
+    ,
     /// Vault not found
     Status404_VaultNotFound
 }
@@ -63,6 +67,9 @@ pub enum GetVaultResponse {
     /// Validation error or malformed request
     Status400_ValidationErrorOrMalformedRequest
     (models::Error)
+    ,
+    /// Vault not found
+    Status404_VaultNotFound
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

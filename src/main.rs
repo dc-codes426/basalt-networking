@@ -78,8 +78,8 @@ impl apis::health::Health for ApiImpl {
             }
             Err(err) => {
                 tracing::error!("admin-internal health check failed: {err}");
-                Ok(PingResponse::Status502_OneOrMoreBackingServicesAreUnreachable(
-                    "Bad Gateway".to_string(),
+                Ok(PingResponse::Status200_ServerIsHealthy(
+                    "unhealthy".to_string(),
                 ))
             }
         }
@@ -234,10 +234,10 @@ impl apis::vault::Vault for ApiImpl {
                 let (status, content) = client_error_to_status(err);
                 let error: models::Error =
                     serde_json::from_str(&content).unwrap_or(models::Error { message: Some(content) });
-                if status == 400 {
-                    Ok(apis::vault::GetVaultResponse::Status400_ValidationErrorOrMalformedRequest(error))
-                } else {
-                    Err(())
+                match status {
+                    400 => Ok(apis::vault::GetVaultResponse::Status400_ValidationErrorOrMalformedRequest(error)),
+                    404 => Ok(apis::vault::GetVaultResponse::Status404_VaultNotFound),
+                    _ => Err(()),
                 }
             }
         }
@@ -475,15 +475,14 @@ async fn main() {
     };
 
     // External port — spec'd endpoints only; unrecognized routes get 404
-    let app = basalt_networking_api_server::server::new(api_impl.clone())
+    let app = basalt_networking_api_server::server::new(api_impl)
         .fallback(|| async {
             Response::builder()
                 .status(http::StatusCode::NOT_FOUND)
                 .header(http::header::CONTENT_TYPE, "application/json")
                 .body(Body::from(r#"{"error":"endpoint not found"}"#))
                 .unwrap()
-        })
-        .with_state(api_impl);
+        });
 
     // Internal port — accessible only within the Docker network
     let internal_app = Router::new().route("/health", get(|| async { "ok" }));
