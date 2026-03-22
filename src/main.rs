@@ -31,7 +31,7 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "basalt_networking=info".parse().unwrap()),
+                .unwrap_or_else(|_| "basalt_networking=info,tower_http=info".parse().unwrap()),
         )
         .init();
 
@@ -76,6 +76,7 @@ async fn main() {
         })
         .layer(
             ServiceBuilder::new()
+                .layer(tower_http::trace::TraceLayer::new_for_http())
                 .layer(DefaultBodyLimit::max(256 * 1024)) // 256 KB
                 .layer(GovernorLayer {
                     config: governor_config.into(),

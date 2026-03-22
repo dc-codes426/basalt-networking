@@ -193,6 +193,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tower",
+ "tower-http",
  "tower_governor",
  "tracing",
  "tracing-subscriber",
@@ -2502,6 +2503,7 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
